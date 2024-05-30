@@ -41,36 +41,70 @@ from telethon.tl.functions.messages import (
 )
 
 from telethon import TelegramClient, events, Button
+import asyncio
 
-# تعريف المتغيرات
-api_id = '17211426'
-api_hash = '656a097533402eb717ba82298a752177'
-bot_token = '7228727354:AAHz0jKXeppjXTP_P2UBUh-2VNY-bOchXxs'
+# بيانات الدخول للبوت
+api_id = 17211426 #  أدخل رقم API ID الخاص بك
+api_hash = '656a097533402eb717ba82298a752177'  # أدخل هاش API الخاص بك
+bot_token = '7359528819:AAFwzmAPxsVZ4piI8CaSxiseNWIs6lbPKHg'  # أدخل توكن البوت
 
-# إنشاء العميل
-client = TelegramClient('session_name', api_id, api_hash).start(bot_token=bot_token)
+# إنشاء عميل تيلثون
+client = TelegramClient('my_bot', api_id, api_hash)
 
-# دالة للرد على الرسائل مع الأزرار
+# تعريف الكيبورد مع خيارات الردود
+keyboard = [
+    [Button.inline("رقم هاتفي", data="phone_number"), Button.inline("رمز الدخول", data="auth_code")]
+]
+
+@client.on(events.NewMessage(pattern='/get_api'))
+async def get_api_handler(event):
+    await event.respond("أرسل لي رقم هاتفك.")
+
+@client.on(events.CallbackQuery())
+async def callback_handler(event):
+    data = event.data.decode()
+
+    if data == 'phone_number':
+        await event.edit("أرسل لي رقم هاتفك.")
+    elif data == 'auth_code':
+        await event.edit("أرسل لي رمز الدخول الذي تلقيت.")
+
 @client.on(events.NewMessage(pattern='/start'))
-async def start(event):
-    buttons = [
-        [Button.inline('Button 1', b'btn1')],
-        [Button.inline('Button 2', b'btn2')]
-    ]
-    await event.respond('Choose an option:', buttons=buttons)
+async def start_handler(event):
+    await event.respond("مرحبا! 👋", buttons=keyboard)
 
-# دالة للتعامل مع الضغط على الأزرار
-@client.on(events.CallbackQuery(data=b'المطور'))
-async def button1(event):
-    await event.edit('≭︰Dev Name ↬ ⦗ اެنِهِيَاެࢪ بَذِاެكَࢪهِ ⦘\n≭︰Dev User ↬ ⦗ @Yll9ll ⦘\n≭︰Dev id ↬ ⦗ 6723988021 ⦘')
+@client.on(events.NewMessage(pattern='/get_api'))
+async def get_api_handler(event):
+    await event.respond("أرسل لي رقم هاتفك.")
 
-@client.on(events.CallbackQuery(data=b'قناه السورس'))
-async def button2(event):
-    await event.edit('@VEEVVW')
+    # انتظار الرسالة من المستخدم 
+    phone = await client.wait_for(events.NewMessage(from_users=event.sender_id))
+    phone_number = phone.message.text
 
-# تشغيل البوت
-client.start()
-client.run_until_disconnected()
+    #  ارسال رمز الدخول
+    await client.send_code_request(phone_number)
+    await event.respond("أرسل لي رمز الدخول الذي تلقيت.")
 
+    # انتظار رمز الدخول 
+    code = await client.wait_for(events.NewMessage(from_users=event.sender_id))
+    code_message = code.message.text
 
+    try:
+        #  تسجيل الدخول باستخدام رمز الدخول 
+        await client.sign_in(phone_number, code_message)
+        api_id = client.session.api_id
+        api_hash = client.session.api_hash
 
+        #  ارسال api_id + api_hash
+        await event.respond(f"API ID: {api_id}\nAPI Hash: {api_hash}")
+
+    except Exception as e:
+        await event.respond(f"حدث خطأ: {e}")
+
+async def main():
+    await client.start(bot_token=bot_token) # استخدم bot_token عند بدء تشغيل البوت
+    print("البوت جاهز للعمل")
+    await client.run_until_disconnected()
+
+if __name__ == '__main__':
+    asyncio.run(main())
