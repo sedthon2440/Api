@@ -49,7 +49,7 @@ api_hash = '656a097533402eb717ba82298a752177'  # أدخل هاش API الخاص 
 bot_token = '7359528819:AAFwzmAPxsVZ4piI8CaSxiseNWIs6lbPKHg'  # أدخل توكن البوت
 
 # إنشاء عميل تيلثون
-client = TelegramClient('my_bot', api_id, api_hash)
+client = TelegramClient('session_name', api_id, api_hash).start(bot_token=bot_token)
 
 # تعريف الكيبورد مع خيارات الردود
 keyboard = [
